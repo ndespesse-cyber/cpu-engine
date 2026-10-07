@@ -148,6 +148,27 @@ bool cpu_input::IsLeftReleased()
 	return vi.IsKeyReleased(VK_LEFT) || vi.IsKeyReleased('A') || vi.IsKeyReleased('Q') || xi.IsLeftReleased();
 }
 
+bool cpu_input::IsTpressed()
+{
+	return vi.IsKey('T');
+}
+
+bool cpu_input::IsRpressed()
+{
+	return vi.IsKey('R');
+}
+
+bool cpu_input::IsFpressed()
+{
+	return vi.IsKey('F');
+}
+
+
+bool cpu_input::IsYpressed()
+{
+	return vi.IsKey('Y');
+}
+
 bool cpu_input::IsRight()
 {
 	return vi.IsKey(VK_RIGHT) || vi.IsKey('D') || xi.IsRight();

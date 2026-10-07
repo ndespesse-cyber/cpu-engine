@@ -21,15 +21,23 @@ public:
 
 private:
 	inline static App* s_pApp = nullptr;
+	float temp = 0.01f;
+	int m_lives = 3;
+	int m_score = 0;
+	float m_cooldown = 0;
 
 	// Resources
 	cpu_font m_font;
 	cpu_mesh m_meshShip;
 	cpu_mesh m_meshMissile;
 	cpu_mesh m_meshSphere;
+	cpu_mesh m_meshTube;
+	cpu_mesh m_meshCollectable;
+
 	cpu_texture m_textureBird;
 	cpu_texture m_textureEarth;
 	cpu_rt* m_rts[1];
+
 
 	// UI
 	cpu_sprite* m_pSprite;
@@ -39,13 +47,17 @@ private:
 	cpu_material m_materialMissile;
 	cpu_material m_materialMoon;
 	cpu_material m_materialEarth;
+	cpu_material m_materialTube;
+	cpu_material m_materialCollectable;
 
 	// 3D
+	std::list<cpu_entity*> m_Collectable;
 	Ship* m_pShip;
 	std::list<cpu_entity*> m_missiles;
 	float m_missileSpeed;
 	cpu_entity* m_pEarth;
 	cpu_entity* m_pMoon;
+	cpu_entity* m_pTube;
 	cpu_particle_emitter* m_pEmitter;
 	cpu_particle_emitter* m_pEmitter2;
 };
@@ -97,3 +109,4 @@ struct StateShipBlink
 	void OnExecute(Ship& cur);
 	void OnExit(Ship& cur, int to);
 };
+

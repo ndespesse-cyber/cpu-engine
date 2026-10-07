@@ -32,7 +32,10 @@ public:
 	bool IsActionReleased(int index = 0);
 
 	bool IsBackPressed();
-
+	bool IsTpressed();
+	bool IsRpressed();
+	bool IsFpressed();
+	bool IsYpressed();
 	bool IsLeft();
 	bool IsLeftPressed();
 	bool IsLeftReleased();
