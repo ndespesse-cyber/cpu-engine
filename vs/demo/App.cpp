@@ -15,6 +15,21 @@ App::~App()
 {
 }
 
+Collectable::Collectable()
+{
+	m_Entity = cpuEngine.CreateEntity();
+	m_pEmitter = cpuEngine.CreateParticleEmitter();
+	m_pEmitter->rate = 0.2f;
+	m_pEmitter->colorMin = cpu::ToColor(255, 0, 0);
+	m_pEmitter->colorMax = cpu::ToColor(255, 128, 0);
+}
+
+Collectable::~Collectable()
+{
+	cpuEngine.Release(m_Entity);
+	cpuEngine.Release(m_pEmitter);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,22 +82,24 @@ void App::OnStart()
 	m_meshTube.CreateCylinder(0.1f, 10.f, 256);
 	m_meshCollectable.CreateSphere(0.5f, 6, 6);
 
+
 	// UI
-	m_pSprite = cpuEngine.CreateSprite();
-	m_pSprite->pTexture = &m_textureBird;
-	m_pSprite->CenterAnchor();
-	m_pSprite->x = 40;
-	m_pSprite->y = 0;
+	//m_pSprite = cpuEngine.CreateSprite();
+	//m_pSprite->pTexture = &m_textureBird;
+	//m_pSprite->CenterAnchor();
+	//m_pSprite->x = 40;
+	//m_pSprite->y = 0;
 
 	// Shader
 
 	//m_materialShip.pTexture = &m_textureEarth;
-	m_materialShip.color = cpu::ToColor(0, 255, 0);
+	m_materialShip.color = cpu::ToColor(0, 255, 255);
 	m_materialMissile.ps = MissileShader;
 	m_materialMoon.ps = MoonShader;
 	m_materialEarth.pTexture = &m_textureEarth;
-	m_materialTube.color = cpu::ToColor(128,0,128);
+	m_materialTube.color = cpu::ToColor(0,0,0);
 	m_materialCollectable.color = cpu::ToColor(0, 255, 0);
+
 
 	// 3D
 	m_missileSpeed = 10.0f;
@@ -100,17 +117,13 @@ void App::OnStart()
 	m_pShip->GetEntity()->transform.SetScaling(2.0f);
 
 	// Particle
-	//cpuEngine.GetParticleData()->Create(2000000);
-	//cpuEngine.GetParticlePhysics()->gy = -0.5f;
-	//m_pEmitter = cpuEngine.CreateParticleEmitter();
-	//m_pEmitter->rate = 1.0f;
-	//m_pEmitter->colorMin = cpu::ToColor(255, 0, 0);
-	//m_pEmitter->colorMax = cpu::ToColor(255, 128, 0);
-	//m_pEmitter2 = cpuEngine.CreateParticleEmitter();
-	//m_pEmitter2->rate = 0.25f;
-	//m_pEmitter2->colorMin = cpu::ToColor(0, 0, 255);
-	//m_pEmitter2->colorMax = cpu::ToColor(0, 128, 255);
-	//m_pEmitter2->pos.x = -2.0f;
+	cpuEngine.GetParticleData()->Create(2000000);
+	cpuEngine.GetParticlePhysics()->gy = -0.5f;
+	m_pEmitter2 = cpuEngine.CreateParticleEmitter();
+	m_pEmitter2->rate = 0.25f;
+	m_pEmitter2->colorMin = cpu::ToColor(0, 0, 255);
+	m_pEmitter2->colorMax = cpu::ToColor(0, 128, 255);
+	m_pEmitter2->active = false;
 
 	// Test
 	//m_pEmitter->blend = CPU_PARTICLE_OPAQUE;
@@ -134,7 +147,6 @@ void App::OnStart()
 	// Camera
 	cpuEngine.GetCamera()->transform.pos.z = -5.0f;
 	cpuEngine.GetCamera()->transform.SetPosition(m_pTube->transform.pos.x, m_pTube->transform.pos.y+20, m_pTube->transform.pos.z+30);
-	cpuEngine.GetCamera()->transform.LookAt(m_pTube->transform.pos.x, m_pTube->transform.pos.y+5, m_pTube->transform.pos.z);
 
 	m_pShip->GetEntity()->transform.AddYPR(3.14);
 }
@@ -147,7 +159,7 @@ void App::OnUpdate()
 	{
 		for (auto it = m_Collectable.begin(); it != m_Collectable.end();)
 		{
-			cpuEngine.Release(*it);
+			delete(*it);
 			it = m_Collectable.erase(it);
 		}
 		if (cpuInput.vi.IsKeyPressed(' '))
@@ -163,7 +175,7 @@ void App::OnUpdate()
 	float time = cpuTime.total;
 
 	// Move sprite
-	m_pSprite->y = 60 + cpu::RoundToInt(sinf(time)*20.0f);
+	//m_pSprite->y = 60 + cpu::RoundToInt(sinf(time)*20.0f);
 
 	// Turn earth
 	//m_pEarth->transform.AddYPR(-dt);
@@ -180,44 +192,93 @@ void App::OnUpdate()
 	//cpuEngine.GetCamera()->transform.AddYPR(0.0f, 0.0f, dt*0.1f);
 
 	// Move ship
-	if (cpuInput.IsLeft()) 
+	m_pEmitter2->pos = m_pShip->GetEntity()->transform.pos;
+	m_pEmitter2->dir = m_pShip->GetEntity()->transform.dir;
+	m_pEmitter2->dir.x = -m_pEmitter2->dir.x;
+	m_pEmitter2->dir.y = -m_pEmitter2->dir.y;
+	m_pEmitter2->dir.z = -m_pEmitter2->dir.z;
+
+	if (m_dashCooldown <= 0.75f)
 	{
-		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pTube->transform.pos, CPU_VEC3_UP, 10.0f, temp * 4.0f);
-		m_pShip->GetEntity()->transform.AddYPR(-dt * 2.40f);
-		m_pShip->GetEntity()->transform.SetPosition(m_pShip->GetEntity()->transform.pos.x, m_pShip->GetEntity()->transform.pos.y + 1, m_pShip->GetEntity()->transform.pos.z);
-		temp -= 0.01;
+		m_leftDash = false;
+		m_rightDash = false;
+		m_pEmitter2->active = false;
 	}
-	if (cpuInput.IsRight()) 
+
+	if (m_leftDash == true && m_dashCooldown >= 0.75f)
 	{
 		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pTube->transform.pos, CPU_VEC3_UP, 10.0f, temp * 4.0f);
-		m_pShip->GetEntity()->transform.AddYPR(dt * 2.40f);
-		m_pShip->GetEntity()->transform.SetPosition(m_pShip->GetEntity()->transform.pos.x, m_pShip->GetEntity()->transform.pos.y + 1, m_pShip->GetEntity()->transform.pos.z);
+		m_pShip->GetEntity()->transform.AddYPR(-dt * 2.4f);
+		m_pShip->GetEntity()->transform.SetPosition(m_pShip->GetEntity()->transform.pos.x, m_pShip->GetEntity()->transform.pos.y + 2.4f, m_pShip->GetEntity()->transform.pos.z);
+		temp -= 0.04;
+		m_pEmitter2->active = true;
+	}
+
+	if (m_rightDash == true && m_dashCooldown >= 0.75f)
+	{
+		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pTube->transform.pos, CPU_VEC3_UP, 10.0f, temp * 4.0f);
+		m_pShip->GetEntity()->transform.AddYPR(-dt * 2.4f);
+		m_pShip->GetEntity()->transform.SetPosition(m_pShip->GetEntity()->transform.pos.x, m_pShip->GetEntity()->transform.pos.y + 2.4f, m_pShip->GetEntity()->transform.pos.z);
+		temp += 0.04;
+		m_pEmitter2->active = true;
+	}
+
+
+	if (cpuInput.IsLeft() && m_leftDash == false && m_rightDash == false)
+	{
+		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pTube->transform.pos, CPU_VEC3_UP, 10.0f, temp * 4.0f);
+		m_pShip->GetEntity()->transform.AddYPR(-dt * 2.4f);
+		m_pShip->GetEntity()->transform.SetPosition(m_pShip->GetEntity()->transform.pos.x, m_pShip->GetEntity()->transform.pos.y + 2.4f, m_pShip->GetEntity()->transform.pos.z);
+		if (cpuInput.vi.IsKeyPressed(VK_SHIFT) && m_dashCooldown <= 0.f)
+		{
+			m_leftDash = true;
+			m_dashCooldown = 1.f;
+		}
+
+		temp -= 0.01;
+		
+	}
+	if (cpuInput.IsRight() && m_leftDash == false && m_rightDash == false)
+	{
+		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pTube->transform.pos, CPU_VEC3_UP, 10.0f, temp * 4.0f);
+		m_pShip->GetEntity()->transform.AddYPR(dt * 2.4f);
+		m_pShip->GetEntity()->transform.SetPosition(m_pShip->GetEntity()->transform.pos.x, m_pShip->GetEntity()->transform.pos.y + 2.4f, m_pShip->GetEntity()->transform.pos.z);
+		if (cpuInput.vi.IsKeyPressed(VK_SHIFT) && m_dashCooldown <= 0.f)
+		{
+			m_rightDash = true;
+			m_dashCooldown = 1.f;
+		}
 		temp += 0.01;
 	}
-	
+
+	m_dashCooldown -= dt;
+
+	cpuEngine.GetCamera()->transform.LookAt(m_pShip->GetEntity()->transform.pos.x, m_pTube->transform.pos.y+2, m_pShip->GetEntity()->transform.pos.z);
 
 	if (m_cooldown <= 0)
 	{
-		cpu_entity* Collectable = cpuEngine.CreateEntity();
-		Collectable->pMesh = &m_meshCollectable;
-		Collectable->pMaterial = &m_materialCollectable;
-		Collectable->transform.OrbitAroundAxis(m_pTube->transform.pos, CPU_VEC3_UP, 10.0f, rand());
-		Collectable->transform.pos.y = 20;
-		m_Collectable.push_back(Collectable);
-		if (m_score >= 10)
-			m_cooldown = 10.f - (m_score * 0.1f);
-		else m_cooldown = 10.f;
+		Collectable* Col;
+		Col = new Collectable();
+		Col->GetEntity()->transform.OrbitAroundAxis(m_pTube->transform.pos, CPU_VEC3_UP, 10.0f, rand());
+		Col->GetEntity()->transform.pos.y = 20.f;
+		Col->GetEntity()->pMesh = &m_meshCollectable;
+		Col->GetEntity()->pMaterial = &m_materialCollectable;
+		Col->GetEmitter()->pos.x = Col->GetEntity()->transform.pos.x;
+		Col->GetEmitter()->pos.z = Col->GetEntity()->transform.pos.z;
+		m_Collectable.push_back(Col);
+		m_cooldown = 5.f - log(10*m_score+1);
+		if (m_cooldown <= 1.f) 
+		{
+			m_cooldown = 1.f;
+		}
 	} 
 	else m_cooldown -= dt;
 
 	// Move collectable
 	for (auto it = m_Collectable.begin(); it != m_Collectable.end(); ++it)
 	{
-		cpu_entity* pCollectable = *it;
-		float collSpeed = 3.f;
-		if (m_score >= 5)
-			collSpeed = collSpeed * (m_score * 0.2);
-		
+		cpu_entity* pCollectable = (*it)->GetEntity();
+		float collSpeed = log(m_score ^ 4 + 1000);
 		if (collSpeed >= 9.f)
 			collSpeed = 9.f;
 			
@@ -226,11 +287,13 @@ void App::OnUpdate()
 		if (pCollectable->transform.pos.y < 0.0f)
 		{
 			cpuEngine.Release(pCollectable);
+			cpuEngine.Release((*it)->GetEmitter());
 			m_lives--;
 		}
 		if (cpu::SphereSphere(pCollectable->transform.pos,1.f,m_pShip->GetEntity()->transform.pos,1.f ))
 		{
 			cpuEngine.Release(pCollectable);
+			cpuEngine.Release((*it)->GetEmitter());
 			m_score++;
 		}
 	}
@@ -245,8 +308,8 @@ void App::OnUpdate()
 	}
 
 	// Fire
-	if ( cpuInput.IsActionPressed() || cpuInput.IsAction(1) )
-		cpuApp.SpawnMissileWithMouse();
+	/*if ( cpuInput.IsActionPressed() || cpuInput.IsAction(1) )
+		cpuApp.SpawnMissileWithMouse();*/
 
 	// Purge missiles
 	for ( auto it=m_missiles.begin() ; it!=m_missiles.end() ; )
@@ -259,8 +322,11 @@ void App::OnUpdate()
 
 	for (auto it = m_Collectable.begin(); it != m_Collectable.end(); )
 	{
-		if ((*it)->dead)
+		if ((*it)->GetEntity()->dead)
+		{ 
+			delete(*it);
 			it = m_Collectable.erase(it);
+		}
 		else
 			++it;
 	}
@@ -272,6 +338,11 @@ void App::OnUpdate()
 void App::OnExit()
 {
 	// YOUR CODE HERE
+	for (auto it = m_Collectable.begin(); it != m_Collectable.end();)
+	{
+		delete(*it);
+		it = m_Collectable.erase(it);
+	}
 
 	if ( m_pShip )
 		m_pShip->Destroy();
@@ -469,3 +540,4 @@ void StateShipBlink::OnExecute(Ship& cur)
 void StateShipBlink::OnExit(Ship& cur, int to)
 {
 }
+
